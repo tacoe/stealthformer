@@ -66,7 +66,7 @@ function TileMap() {
 }
 
 
-function pyxelTileMap(data) {
+function pyxelTextTileMap(data) {
 	var tileMap = new TileMap(),
 		layer;
 
@@ -104,10 +104,58 @@ function pyxelTileMap(data) {
 }
 
 
+function pyxelXMLTileMap(data) {
+	var tileMap = new TileMap();
+
+	function eachAttr(node, fn) {
+		[].slice.call(node.attributes, 0).forEach(function(attr) { fn(attr.name, attr.value); });
+	}
+
+	function attr(node, attrName) {
+		return node.attributes[attrName].value;
+	}
+
+	function fill(arr, num, val) { while(--num > -1) arr[num] = val; return arr; }
+
+	eachAttr(data.childNodes[0], function(key, val) {
+		if (key == "tileswide")
+			tileMap.width = parseInt(val);
+		else if (key == "tileshigh")
+			tileMap.height = parseInt(val);
+		else
+			console.info("ignored tilemap directive ", key);
+	});
+
+	[].forEach.call(data.querySelectorAll("layer"), function(layerNode) {
+		// precreate empty tilemap so we can just overwrite values
+		var layer = [];
+		for (var r=0; r < tileMap.height; ++r)
+			layer.push(fill([], tileMap.width, -1));
+
+		[].forEach.call(layerNode.querySelectorAll("tile"), function(tile) {
+			var x = attr(tile, "x"),
+				y = attr(tile, "y"),
+				ix = attr(tile, "index");
+
+			if (ix > -1)
+				layer[y][x] = ix;
+		});
+
+		tileMap.layers.push(layer);
+	});
+
+	return tileMap;
+}
+
+
 function loadTileMap(url) {
 	return Assets.load({url:url})
 	.then(function(xhr) {
-		return pyxelTileMap(xhr.responseText);
+		var ext = url.substr(-3).toLowerCase();
+		if (ext == "txt")
+			return pyxelTextTileMap(xhr.responseText);
+		if (ext == "xml")
+			return pyxelXMLTileMap(xhr.responseXML);
 	});
 }
 

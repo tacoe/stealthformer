@@ -15,10 +15,10 @@ function LevelData() {
 
 function fileLevel(fileURL, texURLs) {
 	var data = new LevelData(),
-		tp = Assets.loadTileMap("levels/proto.txt")
+		tp = Assets.loadTileMap(fileURL)
 		.then(function(tm) { data.map = tm; }),
 		tex_,
-		xp = Assets.loadTextureSet(["gfx/scowltiles.png"])
+		xp = Assets.loadTextureSet(texURLs)
 		.then(function(txs) { data.textures = txs; });
 
 	return Q.all([tp, xp])
@@ -68,7 +68,7 @@ function MapView(levelData) {
 		var layerCount = map.numLayers(),
 			height = map.height,
 			width = map.width,
-			tex = texSet["scowltiles"];
+			tex = texSet["jiko-tiles"];
 
 		var x, y, l, row, tix, tx, ty;
 		for (l=0; l<layerCount; ++l) {
@@ -77,8 +77,8 @@ function MapView(levelData) {
 				for (x=0; x<width; ++x) {
 					tix = row[x];
 					if (tix > -1) {
-						tx = (tix & 7) * 16;
-						ty = (tix & ~7) * 2;
+						tx = (tix & 15) * 16;
+						ty = (tix & ~15);
 						ctx.drawImage(tex, tx, ty, 16, 16, x * 16, y * 16, 16, 16);
 					}
 				}
@@ -111,8 +111,8 @@ window.main = function() {
 	var lvl,
 		stuff = [
 			View.init(),
-			// fileLevel("levels/proto.txt", ["gfx/scowltiles.png"]).then(function(ld){ lvl = ld; })
-			genLevel(20, 6, ["gfx/scowltiles.png"]).then(function(ld){ lvl = ld; })
+			fileLevel("levels/test1.xml", ["gfx/jiko-tiles.png"]).then(function(ld){ lvl = ld; })
+			// genLevel(20, 6, ["gfx/scowltiles.png"]).then(function(ld){ lvl = ld; })
 		];
 
 	Q.all(stuff).then(function(){
