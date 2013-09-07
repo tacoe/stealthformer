@@ -16,6 +16,16 @@ function extend(base, additions) {
 }
 
 
+function elem(sel) {
+	return (typeof sel == "string") ? document.querySelector(sel) : sel;
+}
+
+
+function listen(sel, name, handler) {
+	elem(sel).addEventListener(name, handler, false);
+}
+
+
 function load(opts) {
 	var xhr = new XMLHttpRequest(),
 		response = Q.defer();
@@ -74,11 +84,15 @@ Jiko.Util = {
 
 	log: log,
 	extend: extend,
+	elem: elem,
+	listen: listen,
 	load: load
 };
 
 // mirror often used stuff in the Jiko ns
 Jiko.log = Jiko.Util.log;
 Jiko.extend = Jiko.Util.extend;
+Jiko.elem = Jiko.Util.elem;
+Jiko.listen = Jiko.Util.listen;
 
 }());

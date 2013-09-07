@@ -3,27 +3,9 @@
 // Part of jiko - © 2013 Arthur Langereis & Taco Ekkel
 
 
-function LevelData() {
-	this.map = null;
-	this.texture = null;
-}
-
-
-function loadLevel(fileURL) {
-	var data = new LevelData();
-
-	return Jiko.Map.loadTileMap(fileURL)
-		.then(function(tm) {
-			Jiko.log(tm);
-			data.map = tm;
-			return data;
-		});
-}
-
-
-function MapView(levelData) {
-	var map = levelData.map,
-		tex = levelData.texture,
+function WorldView(state, renderTarget) {
+	var map = state.map,
+		tex = state.texture,
 		gridSize = tex.grid;
 
 	function renderTileLayer(ctx, tl) {
@@ -42,48 +24,88 @@ function MapView(levelData) {
 		}
 	}
 
-	this.render = function(ctx) {
+	this.render = function() {
+		var ctx = renderTarget.ctx;
+
 		renderTileLayer(ctx, map.layers["BG Static"]);
 		renderTileLayer(ctx, map.layers["BG Building"]);
-		renderTileLayer(ctx, map.layers["Actors"]);
+
+		state.actors.forEach(function(actor) { actor.render(ctx); });
+		
 		renderTileLayer(ctx, map.layers["BG Props"]);
 		renderTileLayer(ctx, map.layers["FG Props"]);
 	};
 }
 
 
-var View = (new function() {
-	var canvas_,
-		ctx_;
+function RenderTarget(sel, scale) {
+	this.canvas = Jiko.elem(sel);
+	this.ctx = this.canvas.getContext("2d");
 
-	this.init = function() {
-		canvas_ = document.querySelector("canvas");
-		ctx_ = canvas_.getContext("2d");
-		ctx_.webkitImageSmoothingEnabled = false;
-		ctx_.mozImageSmoothingEnabled = false;
-		ctx_.imageSmoothingEnabled = false;
-		ctx_.scale(3.0, 3.0);
+	this.ctx.webkitImageSmoothingEnabled = false;
+	this.ctx.mozImageSmoothingEnabled = false;
+	this.ctx.imageSmoothingEnabled = false;
+	this.ctx.scale(scale, scale);
+}
 
-		return Q.defer().resolve();
-	};
 
-	this.ctx = function() { return ctx_; };
-}());
+function State() {
+	this.level = null;
+	this.texture = null;
+	this.actors = [];
+}
+
+
+function Game(state) {
+	var requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame;
+
+	var renderTarget = new RenderTarget("canvas", 3.0),
+		view = new WorldView(state, renderTarget);
+
+	function step() {
+		state.actors.forEach(function(actor) { actor.tick(); });
+		view.render();
+
+		requestAnimationFrame(step);
+	}
+
+	step();
+}
+
+
+function createActors(state) {
+	var actorLayer = state.map.layers["Actors"],
+		x, y, row, tile, grid;
+
+	grid = state.texture.grid;
+
+	for (y=0; y < actorLayer.height; ++y) {
+		row = actorLayer[y];
+
+		for (x=0; x < actorLayer.width; ++x) {
+			tile = row[x];
+			if (tile && tile.ix >= 0) {
+				console.info(x * grid, y * grid, state.texture, tile.ix);
+				var actor = Jiko.Actor.makeActor(x * grid, y * grid, state.texture, tile.ix);
+				state.actors.push(actor);
+			}
+		}
+	}
+}
 
 
 window.onload = function() {
-	var level, texture, stuff;
+	var state = new State();
 
-	stuff = [
-		View.init(),
-		Jiko.Image.loadTiledTexture("gfx/jiko-tiles.png", 16).then(function(tex){ texture = tex; }),
-		loadLevel("levels/test1.xml").then(function(ld){ level = ld; })
-	];
-
-	Q.all(stuff).then(function(){
-		level.texture = texture;
-		new MapView(level).render(View.ctx());
+	Q.all([
+		Jiko.Image.loadTiledTexture("gfx/jiko-tiles.png", 16).then(function(tex){ state.texture = tex; }),
+		Jiko.Map.loadTileMap("levels/test1.xml").then(function(m){ state.map = m; })
+	])
+	.then(function(){
+		createActors(state);
+		Game(state);
 	});
 };
+
 
 }());
